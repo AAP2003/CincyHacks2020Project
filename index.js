@@ -1,0 +1,4 @@
+function getMapData()
+{
+    alert("red");
+}
