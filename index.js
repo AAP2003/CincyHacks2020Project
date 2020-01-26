@@ -1,5 +1,5 @@
 // The radius in meters to use when conducting nearby search
-const searchRadius = "500";
+const searchRadius = "300";
 
 // Promise to create a sleep-like function in JavaScript
 const sleep = (milliseconds) => {
@@ -87,7 +87,7 @@ async function main() {
 
     for(var i = 0; i < data.directions.routes[0].legs[0].steps.length; i++)
     {
-        directionsOutput.innerHTML += "For " + data.directions.routes[0].legs[0].steps[data.steps].duration.text + " " + data.directions.routes[0].legs[0].steps[i].instructions  + "<br />";
+        directionsOutput.innerHTML += "For " + data.directions.routes[0].legs[0].steps[i].duration.text + " " + data.directions.routes[0].legs[0].steps[i].instructions  + "<br />";
     }
 
     textToSpeech("Your trip will take " + data.directions.routes[0].legs[0].duration.text + " and cover " + data.directions.routes[0].legs[0].distance.text);

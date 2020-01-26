@@ -16,6 +16,10 @@ body {
 #para {
     width: 100%;
     border: 1px solid #000;
+    font-size: 20px;
+    font-family: Arial;
+    box-shadow:  0 4px 8px 0 rgba(0, 0, 0, 0.4);
+    /* height: 22px; */
 }
 
 #directions {
@@ -23,4 +27,9 @@ body {
     height: 300px;
     border: 1px solid black;
     box-shadow:  0 4px 8px 0 rgba(0, 0, 0, 0.4);
+}
+
+h1 {
+    font-size: 30px;
+    font-family:Arial;
 }
