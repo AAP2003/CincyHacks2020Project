@@ -1,50 +1,67 @@
-function textToSpeech(txt)
-{
-    window.speechSynthesis.speak(
-        new SpeechSynthesisUtterance(txt)
-    );
-}
+function textToSpeech(txt) {
+  var speaker = new SpeechSynthesisUtterance(txt);
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(txt));
 
-function speechToText()
-{
+  var out = new Promise(resolve => speaker.onend = function () {
+    resolve("Finished");
+  });
 
-}
-
-async function speechText() {
-    // Imports the Google Cloud client library
-  console.log("Hello");
-
-    const speech = require('@google-cloud/speech');
-    const fs = require('fs');
-  
-    // Creates a client
-    const client = new speech.SpeechClient();
-  
-    // The name of the audio file to transcribe
-    const fileName = 'test.wav';
-  
-    // Reads a local audio file and converts it to base64
-    const file = fs.readFileSync(fileName);
-    const audioBytes = file.toString('base64');
-  
-    // The audio file's encoding, sample rate in hertz, and BCP-47 language code
-    const audio = {
-      content: audioBytes,
-    };
-    const config = {
-      encoding: 'LINEAR16',
-      sampleRateHertz: 16000,
-      languageCode: 'en-US',
-    };
-    const request = {
-      audio: audio,
-      config: config,
-    };
-  
-    // Detects speech in the audio file
-    const [response] = await client.recognize(request);
-    const transcription = response.results
-      .map(result => result.alternatives[0].transcript)
-      .join('\n');
-    console.log(`Transcription: ${transcription}`);
+  var check = async () => {
+    if (!window.speechSynthesis.speaking) {
+      speaker.onend();
+    } else {
+      window.setTimeout(check, 500);
+    }
   }
+
+  check();
+
+  return out;
+}
+
+
+class SpeechToText {
+
+  finalTranscript;
+  recognition;
+
+  constructor() {
+    window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    this.finalTranscript = '';
+    this.recognition = new window.SpeechRecognition();
+
+    var temp = document.getElementById('para');
+
+    this.recognition.interimResults = true;
+    this.recognition.maxAlternatives = 10;
+    this.recognition.continuous = false;
+
+    this.recognition.onresult = (event) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex, len = event.results.length; i < len; i++) {
+        let transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          this.finalTranscript += transcript;
+        } else { 
+          interimTranscript += transcript;
+        }
+      }
+
+      temp.innerHTML = this.finalTranscript + interimTranscript;
+    }
+  }
+
+  getText() {
+    console.log("get text");
+    this.running = true;
+    this.recognition.start();
+
+    return new Promise(resolve => {
+      this.recognition.onend = function () {
+        this.finalTranscript += this.interimTranscript;
+        resolve(this.finalTranscript);
+      }
+    });
+  }
+}
+
