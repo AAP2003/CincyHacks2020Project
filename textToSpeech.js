@@ -56,12 +56,35 @@ class SpeechToText {
     this.running = true;
     this.recognition.start();
 
+    window.setTimeout(() => { }, 5000);
+
+    this.recognition.stop();
+
+    return this.getFinalScript();
+
     return new Promise(resolve => {
       this.recognition.onend = function () {
-        this.finalTranscript += this.interimTranscript;
+        //this.finalTranscript += this.interimTranscript;
         resolve(this.finalTranscript);
       }
     });
+  }
+
+  start() {
+    console.log("get text");
+    this.running = true;
+    this.recognition.start();
+  }
+
+  stop() {
+    this.recognition.stop();
+
+    return this.getFinalScript();
+  }
+
+  getFinalScript()
+  {
+    return this.finalTranscript;
   }
 }
 

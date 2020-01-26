@@ -1,89 +1,158 @@
-var temp = document.getElementById('para');
+// The radius in meters to use when conducting nearby search
+const searchRadius = "500";
 
+// Promise to create a sleep-like function in JavaScript
+const sleep = (milliseconds) => {
+    return new Promise(resolve => setTimeout(resolve, milliseconds))
+}
+
+// Called when the button is clicked
 async function main() {
+    
+    // Get the current location of the user
     var location = await getLocation();
 
-    if (window.DeviceOrientationEvent) {
-        // Listen for the deviceorientation event and handle the raw data
-        window.addEventListener('deviceorientation', function(eventData) {
-          var compassdir;
-      
-          if(event.webkitCompassHeading) {
-            // Apple works only with this, alpha doesn't work
-            compassdir = event.webkitCompassHeading;  
-          }
-          else compassdir = event.alpha;
-          console.log(compassdir);
-        });
-      }
-
+    // Get all the places within the searchRadius of the user
     var nearby = await getNearbyPlaces();
+
+    // Object to use voice input
     var voiceIn = new SpeechToText();
 
-    console.log(nearby);
-
+    // Get the distance from the current location to each of the nearby places
     for (var i = 0; i < nearby.results.length; i++)
         nearby.results[i].distance = await getDistance(nearby.results[i]);
 
+    // Sort the nearby places ascending based on distance
     nearby.results.sort((a, b) => a.distance.value - b.distance.value);
-    textToSpeech(`There are ${nearby.results.length} places nearby.`);
+    
+    // Tell the user how many places are nearby
+    await textToSpeech(`There are ${nearby.results.length} places nearby.`);
+
+    // Tell the user the name and distance to each of the nearby places
     for (var i = 0; i < nearby.results.length; i++)
         await textToSpeech(`${nearby.results[i].name} is ${nearby.results[i].distance.text} away.`);
 
-    window.setTimeout(() => {}, 1000);
+    // Start the voice input
+    voiceIn.start();
 
-    var txt = await voiceIn.getText();
+    // Wait 5 seconds for the user to give their voice input
+    await sleep(5000);
+    
+    // Stop the vocie input
+    var txt = voiceIn.stop();
 
-    console.log(txt);
+    // Set
+    var closest = nearby.results[1];
 
-    var closest = nearby.results[0];
     nearby.results.forEach(a => {
-        if (levenshtein(txt, a.name) < levenshtein(txt, closest.name))
+        if(levenshtein(txt, a.name) < levenshtein(txt, closest.name)) {
             closest = a;
-    });
+        }
+            
+    }); 
 
-    console.log(closest);
+    var data = {
+        location: await getLocation(),
+        steps: 0,
+        directions: await getDirections()
+    };
+
+    var directionsOutput = document.getElementById("directions");
+
+    directionsOutput += "Your trip will take <b>" + data.directions.routes[0].legs[0].duration.text + "</b><br /><br />";
+
+    for(var i = 0; i < data.directions.routes[0].legs[0].steps.length; i++)
+    {
+        directionsOutput += data.directions.routes[0].legs[0].steps[i].instructions + "<br />";
+    }
+
+    var html = data.directions.routes[0].legs[0].steps[data.steps].instructions;
+    var div = document.createElement("div");
+    div.innerHTML = html;
+    textToSpeech(div.textContent || div.innerText || "");
+
+    directionLoop(data);
+}
+
+async function directionLoop(data)
+{
+
+    if(coordDistance(data.location.coords.latitude, data.location.coords.longitude, data.directions.routes[0].legs[0].steps[data.steps].end_location.lat(), data.directions.routes[0].legs[0].steps[data.steps].end_location.lng(), "") < .01) { 
+        data.steps++;
+        textToSpeech(data.directions.routes[0].legs[0].steps[data.steps].end_location.lat(), data.directions.routes[0].legs[0].steps[data.steps].instructions);
+    }
+
+    if (coordDistance(data.location.coords.latitude, data.location.coords.longitude, data.directions.routes[0].legs[0].end_location.lat(), data.directions.routes[0].legs[0].end_location.lng(), "") < .01) {       
+        clearInterval(interval);
+        textToSpeech("You have reached your final destination!");
+        return;
+    }  
+
+    await sleep(5000);
+
+    data.location = await getLocation();
+
+    directionLoop(data);
 
 }
 
-function directionLoop(data) {
-
+function coordDistance(lat1, lon1, lat2, lon2, unit) {
     
+	if ((lat1 == lat2) && (lon1 == lon2)) {
+		return 0;
+	}
+	else {
+		var radlat1 = Math.PI * lat1/180;
+		var radlat2 = Math.PI * lat2/180;
+		var theta = lon1-lon2;
+		var radtheta = Math.PI * theta/180;
+		var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+		if (dist > 1) {
+			dist = 1;
+		}
+		dist = Math.acos(dist);
+		dist = dist * 180/Math.PI;
+		dist = dist * 60 * 1.1515;
+		if (unit=="K") { dist = dist * 1.609344 }
+        if (unit=="N") { dist = dist * 0.8684 }
+        
+		return dist;
+	}
 }
 
 function levenshtein(a, b) {
-    if(a.length === 0) return b.length;
-    if(b.length === 0) return a.length;
-  
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+
     var matrix = [];
-  
+
     // increment along the first column of each row
     var i;
-    for(i = 0; i <= b.length; i++){
-      matrix[i] = [i];
+    for (i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
     }
-  
+
     // increment each column in the first row
     var j;
-    for(j = 0; j <= a.length; j++){
-      matrix[0][j] = j;
+    for (j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
     }
-  
+
     // Fill in the rest of the matrix
-    for(i = 1; i <= b.length; i++){
-      for(j = 1; j <= a.length; j++){
-        if(b.charAt(i-1) == a.charAt(j-1)){
-          matrix[i][j] = matrix[i-1][j-1];
-        } else {
-          matrix[i][j] = Math.min(matrix[i-1][j-1] + 1, // substitution
-                                  Math.min(matrix[i][j-1] + 1, // insertion
-                                           matrix[i-1][j] + 1)); // deletion
+    for (i = 1; i <= b.length; i++) {
+        for (j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) == a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, // substitution
+                    Math.min(matrix[i][j - 1] + 1, // insertion
+                        matrix[i - 1][j] + 1)); // deletion
+            }
         }
-      }
     }
-  
+
     return matrix[b.length][a.length];
-  }
+}
 
 async function getDistance(destination) {
     var directions = await getDirections(destination);
@@ -122,7 +191,7 @@ async function getNearbyPlaces() {
             var location = new google.maps.LatLng(geoLocation.coords.latitude, geoLocation.coords.longitude);
             var request = {
                 location: location,
-                radius: '250',
+                radius: searchRadius,
             };
             var map = new google.maps.Map(document.getElementById('map'));
             var service = new google.maps.places.PlacesService(map);
