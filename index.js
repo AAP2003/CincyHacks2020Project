@@ -1,51 +1,41 @@
 var user_location;
 
-function main() {
-    var nearby = getNearbyPlaces();
+async function main() {
+    var nearby = await getNearbyPlaces();
+
+    console.log(nearby);
+
+    nearby.results.forEach(element => {
+        console.log(element);
+    });
 }
 
-const getNearbyPlaces = () => {
-    getLocation(executeGMaps());
-};
+async function getNearbyPlaces() {
+    return new Promise((resolve) => {
 
-const getLocation = (returnCallback) => {
-    if (navigator.geolocation) {
-        position = navigator.geolocation.getCurrentPosition(returnCallback);
-    } else {
-        window.alert("could not get location")
-    }
-};
+        function apiNearbyPlaces(geoLocation) {
+            return new Promise((resolve) => {
+                var location = new google.maps.LatLng(geoLocation.coords.latitude, geoLocation.coords.longitude);
+                var request = {
+                    location: location,
+                    radius: '250',
+                };
+                var map = new google.maps.Map(document.getElementById('map'));
+                var service = new google.maps.places.PlacesService(map);
+                service.nearbySearch(request, (results, status) => {
+                    if (status == google.maps.places.PlacesServiceStatus.OK) {
+                        resolve({"results": results, "status" : status});
+                    }
+                });
+            });
+        }
 
-function executeGMaps(geoLocation)
-{    
-    var location = new google.maps.LatLng(0,151.1956316); 
-    var request = {
-        location: location,
-        radius: '50',
-    };
-
-    var service = new google.maps.places.PlacesService();
-    service.nearbySearch(request, gMapsCallback);
+        resolve(await apiNearbyPlaces(await getLocation()));
+    });
 }
 
-function gMapsCallback(results, status) {
-  if (status == google.maps.places.PlacesServiceStatus.OK) {
-    for (var i = 0; i < results.length; i++) {
-      var place = results[i];
-      console.log(place);
-    }
-  }
+function getLocation() {
+    return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(resolve);
+    });
 }
-
-// Directions
-const directionLoop = (data) => {
-    if (data.location == something) {
-
-    }
-
-    directionLoop({ "location": getLocation(), "directions": data.directions });
-};
-
-const getDirections = () => {
-    
-};
