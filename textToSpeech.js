@@ -25,7 +25,7 @@ class SpeechToText {
   finalTranscript;
   recognition;
 
-  constructor() {
+  constructor(continuous) {
     window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     this.finalTranscript = '';
     this.recognition = new window.SpeechRecognition();
@@ -34,7 +34,7 @@ class SpeechToText {
 
     this.recognition.interimResults = true;
     this.recognition.maxAlternatives = 10;
-    this.recognition.continuous = false;
+    this.recognition.continuous = continuous;
 
     this.recognition.onresult = (event) => {
       let interimTranscript = '';
@@ -51,27 +51,7 @@ class SpeechToText {
     }
   }
 
-  getText() {
-    console.log("get text");
-    this.running = true;
-    this.recognition.start();
-
-    window.setTimeout(() => { }, 5000);
-
-    this.recognition.stop();
-
-    return this.getFinalScript();
-
-    return new Promise(resolve => {
-      this.recognition.onend = function () {
-        //this.finalTranscript += this.interimTranscript;
-        resolve(this.finalTranscript);
-      }
-    });
-  }
-
   start() {
-    console.log("get text");
     this.running = true;
     this.recognition.start();
   }
@@ -85,6 +65,11 @@ class SpeechToText {
   getFinalScript()
   {
     return this.finalTranscript;
+  }
+
+  clearFinalTranscript()
+  {
+    this.finalTranscript = "";
   }
 }
 

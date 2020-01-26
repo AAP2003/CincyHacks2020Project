@@ -6,9 +6,9 @@
         <script src="textToSpeech.js"></script>
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDmRndoDS0aEFvj1BX0vHe_9DEx61K66U4&libraries=places"></script>
     </head>
-    <body>
+    <body onload="load();">
+        <input type="button" id="btn" value="Get Nearby Places" onclick="main();"/>
         <p id="para"></p>
-        <input type="button" value="Enter" onclick="main();"/>
         <p id="directions"></p>
         <div id="map"></div>
     </body>

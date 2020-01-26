@@ -6,6 +6,28 @@ const sleep = (milliseconds) => {
     return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
+function load() {
+    var voiceIn = new SpeechToText(true);
+    voiceIn.start();
+    wakeListener(voiceIn);
+}
+
+async function wakeListener(voiceIn) {
+
+    console.log(voiceIn.getFinalScript());
+    console.log(voiceIn.getFinalScript().includes("get nearby places"));
+
+    if (voiceIn.getFinalScript().includes("get nearby places")) {
+        voiceIn.clearFinalTranscript();
+        voiceIn.stop();
+        main();
+        return;
+    }   
+
+    await sleep(1000);
+    wakeListener(voiceIn);
+}
+
 // Called when the button is clicked
 async function main() {
     
@@ -16,7 +38,7 @@ async function main() {
     var nearby = await getNearbyPlaces();
 
     // Object to use voice input
-    var voiceIn = new SpeechToText();
+    var voiceIn = new SpeechToText(false);
 
     // Get the distance from the current location to each of the nearby places
     for (var i = 0; i < nearby.results.length; i++)
@@ -32,6 +54,9 @@ async function main() {
     for (var i = 0; i < nearby.results.length; i++)
         await textToSpeech(`${nearby.results[i].name} is ${nearby.results[i].distance.text} away.`);
 
+    // Ask the user where they want to go
+    await textToSpeech("Where do you want to go?");
+    
     // Start the voice input
     voiceIn.start();
 
@@ -41,7 +66,6 @@ async function main() {
     // Stop the vocie input
     var txt = voiceIn.stop();
 
-    // Set
     var closest = nearby.results[1];
 
     nearby.results.forEach(a => {
@@ -54,23 +78,25 @@ async function main() {
     var data = {
         location: await getLocation(),
         steps: 0,
-        directions: await getDirections()
+        directions: await getDirections(closest)
     };
 
     var directionsOutput = document.getElementById("directions");
 
-    directionsOutput += "Your trip will take <b>" + data.directions.routes[0].legs[0].duration.text + "</b><br /><br />";
+    directionsOutput.innerHTML += "Your trip will take <b>" + data.directions.routes[0].legs[0].duration.text + " and cover " + data.directions.routes[0].legs[0].distance.text + "</b><br /><br />";
 
     for(var i = 0; i < data.directions.routes[0].legs[0].steps.length; i++)
     {
-        directionsOutput += data.directions.routes[0].legs[0].steps[i].instructions + "<br />";
+        directionsOutput.innerHTML += "For " + data.directions.routes[0].legs[0].steps[data.steps].duration.text + " " + data.directions.routes[0].legs[0].steps[i].instructions  + "<br />";
     }
 
-    var html = data.directions.routes[0].legs[0].steps[data.steps].instructions;
+    textToSpeech("Your trip will take " + data.directions.routes[0].legs[0].duration.text + " and cover " + data.directions.routes[0].legs[0].distance.text);
+
+    var html = "For " + data.directions.routes[0].legs[0].steps[data.steps].duration.text + " " + data.directions.routes[0].legs[0].steps[data.steps].instructions;
     var div = document.createElement("div");
     div.innerHTML = html;
     textToSpeech(div.textContent || div.innerText || "");
-
+    
     directionLoop(data);
 }
 
@@ -79,12 +105,18 @@ async function directionLoop(data)
 
     if(coordDistance(data.location.coords.latitude, data.location.coords.longitude, data.directions.routes[0].legs[0].steps[data.steps].end_location.lat(), data.directions.routes[0].legs[0].steps[data.steps].end_location.lng(), "") < .01) { 
         data.steps++;
-        textToSpeech(data.directions.routes[0].legs[0].steps[data.steps].end_location.lat(), data.directions.routes[0].legs[0].steps[data.steps].instructions);
+        var html = data.directions.routes[0].legs[0].steps[data.steps].instructions + " for " + data.directions.routes[0].legs[0].steps[data.steps].duration.text;
+        var div = document.createElement("div");
+        div.innerHTML = html;
+        textToSpeech(div.textContent || div.innerText || "");
     }
 
     if (coordDistance(data.location.coords.latitude, data.location.coords.longitude, data.directions.routes[0].legs[0].end_location.lat(), data.directions.routes[0].legs[0].end_location.lng(), "") < .01) {       
         clearInterval(interval);
         textToSpeech("You have reached your final destination!");
+        var voiceIn = new SpeechToText(true);
+        voiceIn.start();
+        wakeListener(voiceIn);
         return;
     }  
 
